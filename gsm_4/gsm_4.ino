@@ -1,3 +1,8 @@
+
+//Connections: 
+//GPS on Serial Port
+//GSM on 
+
 #include <stdlib.h>
 #include <math.h>
 #include <SoftwareSerial.h>
@@ -8,13 +13,18 @@
 
 #define delay_period  4000      //ms
 
-#define ADC_gain_external       0.7
+#define ADC_gain_external       0.35
+#define gain_inverse            1/ADC_gain_external
 #define ADC_input_channel       A0
 #define ADC_conversion_factor   0.00488   // 5/1024
 
-#define URL             "api.thingspeak.com/update?key="//0JIIPHC0U74UGEAQ&field1=70&field2=70&field3=200"
+#define URL             "api.thingspeak.com/update?key="
 #define Write_API_Key   "H17K19370Z2V8F3X"
 
+#define LED             A5
+
+#define LED_ON          digitalWrite(LED, HIGH)
+#define LED_OFF         digitalWrite(LED, LOW)
 
 bool flag = false;
 
@@ -30,7 +40,7 @@ unsigned int flg     = 0;    // GPS flag
 unsigned int com_cnt = 0;    // Comma counter
 unsigned int time_cnt = 0;   // Time Counter
 char lat[20];                // Latitude array
-char lg[20];                 // Longitude array
+char lg[20];                 // Longitude array 
 char spd[20];                // Speed Array
 char date[20];               // Date Array
 char time[20];               // Time Array
@@ -55,7 +65,7 @@ SoftwareSerial mySerial(GSM_Rx, GSM_Tx);
 
 float GetBatteryVoltage (void)
 {
-  return ((analogRead(ADC_input_channel)) * ADC_conversion_factor * ADC_gain_external);
+  return ((analogRead(ADC_input_channel)) * ADC_conversion_factor * gain_inverse);
 }
 
 
@@ -215,22 +225,22 @@ void GSM_init (void)
 {
   mySerial.begin(9600);
 
-  delay(10000);
-  mySerial.println("AT+CREG?");
+  delay(10000); 
+  mySerial.println("AT+CREG?");                                       //Check if sim registered (Debug only)
   delay(2000);
 
-  mySerial.println("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\"");
+  mySerial.println("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\"");              //Set connection type as GPRS
+  delay(2000);    
+
+  mySerial.println("AT+SAPBR=3,1,\"APN\",\"airtelgprs.com\"");        //Set APN
   delay(2000);
 
-  mySerial.println("AT+SAPBR=3,1,\"APN\",\"airtelgprs.com\"");
+  mySerial.println("AT+SAPBR=1,1");                                   //Open context
   delay(2000);
 
-  mySerial.println("AT+SAPBR=1,1");
+  mySerial.println("AT+HTTPINIT");                                    //Initialize HTTP
   delay(2000);
-
-  mySerial.println("AT+HTTPINIT");
-  delay(2000);
-
+  
   mySerial.println("AT+HTTPPARA=\"CID\",1");
   delay(2000);
 }
@@ -258,6 +268,7 @@ void GSM_update(void)
   delay(10000);
 }
 
+
 void GSM_GetRequest(void)
 {
   mySerial.println("AT+HTTPACTION=0");
@@ -268,6 +279,7 @@ void GSM_GetRequest(void)
 void setup() {
   GSM_init();
   GPS_init();
+  pinMode(LED, OUTPUT);
 }
 
 
@@ -277,7 +289,13 @@ void loop() {
   battery_voltage = String(volt, 3);
 
   GSM_update();
+  
+  LED_ON;
+  
   GetGPS_Processed();
+  
+  LED_OFF;
+  
   delay(delay_period);
-  GSM_GetRequest();
+//  GSM_GetRequest();
 }
